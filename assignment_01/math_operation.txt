@@ -1,0 +1,11 @@
+Read x1, 32
+Read x2, 33
+x3 = x1 + x2
+x4 = x1 / x2
+x5 = x2 - x1
+x6 = x1 * x2
+
+Write x3, 34
+Write x4, 35
+Write x5, 36
+Write x6, 37
