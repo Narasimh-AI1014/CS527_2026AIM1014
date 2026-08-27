@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <string.h>
+#include <time.h>
 #include "processor.h"
 
 int32_t IntReg[NP][NUM_INT_REG];
@@ -12,7 +13,6 @@ int PC[NP], Flags[NP][4], EndSim[NP];
 int current_pid = -1;
 
 static FILE *log_fp[NP];
-
 
 static int32_t read_word(int proc_id, int addr) {
     if (addr < 0 || addr + 3 >= 4096) return 0;
@@ -56,7 +56,6 @@ static void set_flags_sub(int proc_id, int32_t a, int32_t b, int32_t res) {
 }
 
 void reset(int proc_id) {
-    // Initialize registers
     for (int i = 0; i < NUM_INT_REG; i++)
         IntReg[proc_id][i] = 0;
     for (int i = 0; i < NUM_VEC_REG; i++)
@@ -67,7 +66,6 @@ void reset(int proc_id) {
     Flags[proc_id][0] = Flags[proc_id][1] = Flags[proc_id][2] = Flags[proc_id][3] = 0;
     EndSim[proc_id] = 0;
 
-    // Open log file based on processor ID
     char logname[64];
     snprintf(logname, sizeof(logname), "logs/process_%d.log", proc_id);
     if (log_fp[proc_id]) fclose(log_fp[proc_id]);
@@ -77,6 +75,7 @@ void reset(int proc_id) {
         exit(EXIT_FAILURE);
     }
 }
+
 static int opcode, dest, src1, src2;
 
 void fetch(int proc_id) {
@@ -180,11 +179,15 @@ void execute(int proc_id) {
             break;
 
         // Print
-        case 0x08:
-            fprintf(log_fp[proc_id], "Process id: %d x%d : %08X\n",
-                    current_pid, src2, IntReg[proc_id][src2]);
+        case 0x08: {
+            time_t now = time(NULL);
+            char timestamp[64];
+            strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(&now));
+            fprintf(log_fp[proc_id], "[%s] Process id: %d x%d : %08X\n",
+                    timestamp, current_pid, src2, IntReg[proc_id][src2]);
             fflush(log_fp[proc_id]);
             break;
+        }
 
         // Branches
         case 0x10: case 0x11: case 0x12: case 0x13:

@@ -6,6 +6,8 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <libgen.h>
+#include <time.h>
+#include <stdarg.h>
 
 #include "os.h"
 #include "compiler.h"
@@ -17,7 +19,7 @@
 
 typedef struct Process {
     int pid;
-    int proc_id;
+    int proc_id;        // -1 = waiting/ready
     int finished;
     char prog_file[256];
     char data_file[256];
@@ -29,12 +31,27 @@ static int num_tasks = 0;
 static int next_pid = 1;
 static int proc_busy[NP] = {0};
 static int shell_exit = 0;
+static FILE *os_log_fp = NULL;
 
 static void ensure_dir(const char *dir) {
     if (mkdir(dir, 0777) == -1 && errno != EEXIST) {
         perror("mkdir");
         exit(EXIT_FAILURE);
     }
+}
+
+static void log_event(const char *fmt, ...) {
+    if (!os_log_fp) return;
+    time_t now = time(NULL);
+    char timestamp[64];
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(&now));
+    fprintf(os_log_fp, "[%s] ", timestamp);
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(os_log_fp, fmt, args);
+    va_end(args);
+    fprintf(os_log_fp, "\n");
+    fflush(os_log_fp);
 }
 
 static void get_base_name(const char *prog_name, char *base, size_t base_len) {
@@ -81,6 +98,8 @@ static void assign_waiting(void) {
         reset(proc);
         tasks[i].proc_id = proc;
         proc_busy[proc] = 1;
+        log_event("PID %d moved from Ready to Running on processor %d",
+                  tasks[i].pid, proc);
     }
 }
 
@@ -147,6 +166,8 @@ static void loader(const char *prog_name, const char *data_name) {
         strcpy(tasks[num_tasks].base_name, base);
         num_tasks++;
         proc_busy[proc] = 1;
+        log_event("PID %d created, program %s, assigned to processor %d (state: Running)",
+                  tasks[num_tasks-1].pid, base, proc);
         printf("Loaded PID %d on processor %d (program: %s, data: %s)\n",
                tasks[num_tasks-1].pid, proc, compiled_name, data_path);
     } else if (num_tasks < MAX_TASKS) {
@@ -157,12 +178,18 @@ static void loader(const char *prog_name, const char *data_name) {
         strcpy(tasks[num_tasks].data_file, data_path);
         strcpy(tasks[num_tasks].base_name, base);
         num_tasks++;
+        log_event("PID %d created, program %s, placed in Ready queue (state: Ready)",
+                  tasks[num_tasks-1].pid, base);
         printf("No free processor, PID %d queued\n", tasks[num_tasks-1].pid);
     }
 }
 
 static void display_status(void) {
-    printf("\n===== Process Control Block =====\n");
+    time_t now = time(NULL);
+    char timestamp[64];
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(&now));
+
+    printf("\n===== Process Control Block (at %s) =====\n", timestamp);
     printf("%-5s %-20s %-12s %-10s\n", "PID", "Program", "Processor", "Status");
     printf("-----------------------------------------------\n");
 
@@ -177,7 +204,7 @@ static void display_status(void) {
             status = "Running";
             snprintf(proc_str, sizeof(proc_str), "P%d", tasks[i].proc_id);
         } else {
-            status = "Waiting";
+            status = "Ready";
             strcpy(proc_str, "-");
         }
 
@@ -248,6 +275,13 @@ void os_run(int argc, char** argv) {
     ensure_dir("logs");
     ensure_dir("data");
 
+    os_log_fp = fopen("logs/os.log", "a");
+    if (!os_log_fp) {
+        perror("fopen os.log");
+        exit(EXIT_FAILURE);
+    }
+    log_event("Simulator started");
+
     if (argc >= 2) {
         const char *prog = argv[1];
         const char *data = (argc >= 3) ? argv[2] : NULL;
@@ -267,6 +301,7 @@ void os_run(int argc, char** argv) {
                 proc_busy[proc] = 0;
                 tasks[i].finished = 1;
                 tasks[i].proc_id = -1;
+                log_event("PID %d finished, data written to %s", tasks[i].pid, outname);
                 printf("PID %d finished, data written to %s\n", tasks[i].pid, outname);
             }
         }
@@ -277,4 +312,7 @@ void os_run(int argc, char** argv) {
 
         usleep(10000);
     }
+
+    log_event("Simulator exiting");
+    fclose(os_log_fp);
 }
