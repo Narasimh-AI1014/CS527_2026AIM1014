@@ -8,9 +8,24 @@
 #define MAX_LABELS 256
 
 static char *trim(char *s) {
-    while (isspace((unsigned char)*s)) s++;
+    // Trim leading whitespace
+    char *start = s;
+    while (isspace((unsigned char)*start)) {
+        start++;
+    }
+    // If all whitespace, set string to empty and return
+    if (*start == '\0') {
+        *s = '\0';
+        return s;
+    }
+    // Shift non-whitespace part to beginning
+    memmove(s, start, strlen(start) + 1);
+    // Trim trailing whitespace
     char *end = s + strlen(s) - 1;
-    while (end >= s && isspace((unsigned char)*end)) *end-- = '\0';
+    while (end >= s && isspace((unsigned char)*end)) {
+        *end = '\0';
+        end--;
+    }
     return s;
 }
 
@@ -244,7 +259,26 @@ void compile(const char *source_filename, const char *prog_filename) {
                 }
             }
         }
-        // Arithmetic or data movement
+        // Simple assignment: dest = constant or dest = register (3 tokens)
+        else if (nt == 3 && strcmp(tokens[1], "=") == 0) {
+            char *dst = tokens[0];
+            char *src = tokens[2];
+            int d_vec, d_num, s_vec, s_num;
+            if (parse_reg(dst, &d_vec, &d_num) && !d_vec) {
+                if (is_number(src)) {
+                    opcode = 0x0F;   // data movement constant
+                    dest = d_num;
+                    src1 = 0;
+                    src2 = atoi(src);
+                } else if (parse_reg(src, &s_vec, &s_num) && !s_vec) {
+                    opcode = 0x07;   // data movement register
+                    dest = d_num;
+                    src1 = 0;
+                    src2 = s_num;
+                }
+            }
+        }
+        // Arithmetic or data movement (>=5 tokens)
         else if (nt >= 5 && strcmp(tokens[1], "=") == 0) {
             char *dst = tokens[0];
             char *op1 = tokens[2];

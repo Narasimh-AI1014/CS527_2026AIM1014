@@ -1,0 +1,17 @@
+% Count from 100000 down to 0, printing every 5000 steps
+x1 = 100000     % counter
+x2 = 5000       % print interval
+x3 = 0          % limit
+x4 = 0          % temp
+
+.loop
+x1 = x1 - 1     % decrement counter
+x15 = x1 - x2   % check if multiple of 5000
+BNE .skip       % if not, skip print
+print x1        % print counter
+x2 = x2 - 5000  % next print threshold
+.skip
+x15 = x1 - x3   % compare counter with 0
+BGT .loop       % if counter > 0, continue
+
+print x1        % final counter

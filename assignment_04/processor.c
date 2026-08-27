@@ -2,16 +2,17 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <string.h>
 #include "processor.h"
 
 int32_t IntReg[NP][NUM_INT_REG];
 int32_t VecReg[NP][NUM_VEC_REG][VEC_LEN];
 int PC[NP], Flags[NP][4], EndSim[NP];
-char Instruction[NP][256];
-char Data[NP][4096];
+
 int current_pid = -1;
 
 static FILE *log_fp[NP];
+
 
 static int32_t read_word(int proc_id, int addr) {
     if (addr < 0 || addr + 3 >= 4096) return 0;
@@ -55,17 +56,20 @@ static void set_flags_sub(int proc_id, int32_t a, int32_t b, int32_t res) {
 }
 
 void reset(int proc_id) {
+    // Initialize registers
     for (int i = 0; i < NUM_INT_REG; i++)
         IntReg[proc_id][i] = 0;
     for (int i = 0; i < NUM_VEC_REG; i++)
         for (int j = 0; j < VEC_LEN; j++)
             VecReg[proc_id][i][j] = 0;
+
     PC[proc_id] = 0;
     Flags[proc_id][0] = Flags[proc_id][1] = Flags[proc_id][2] = Flags[proc_id][3] = 0;
     EndSim[proc_id] = 0;
 
-    char logname[32];
-    sprintf(logname, "proc_%d.log", proc_id);
+    // Open log file based on processor ID
+    char logname[64];
+    snprintf(logname, sizeof(logname), "logs/process_%d.log", proc_id);
     if (log_fp[proc_id]) fclose(log_fp[proc_id]);
     log_fp[proc_id] = fopen(logname, "a");
     if (!log_fp[proc_id]) {
@@ -73,17 +77,19 @@ void reset(int proc_id) {
         exit(EXIT_FAILURE);
     }
 }
+static int opcode, dest, src1, src2;
 
 void fetch(int proc_id) {
     if (PC[proc_id] + 3 >= 256) {
         EndSim[proc_id] = 1;
         return;
     }
-    // opcode, dest, src1, src2 are stored in globals? We'll use static/global
-    // For simplicity, use local static arrays.
+    opcode = (uint8_t)Instruction[proc_id][PC[proc_id]];
+    dest   = (uint8_t)Instruction[proc_id][PC[proc_id] + 1];
+    src1   = (uint8_t)Instruction[proc_id][PC[proc_id] + 2];
+    src2   = (uint8_t)Instruction[proc_id][PC[proc_id] + 3];
+    PC[proc_id] += 4;
 }
-
-static int opcode, dest, src1, src2;
 
 void decode(void) {
     // empty
@@ -297,15 +303,8 @@ void execute(int proc_id) {
 void process_instructions(int proc_id, int pid, int instruction_count) {
     current_pid = pid;
     for (int i = 0; i < instruction_count && !EndSim[proc_id]; i++) {
-        if (PC[proc_id] + 3 >= 256) {
-            EndSim[proc_id] = 1;
-            break;
-        }
-        opcode = (uint8_t)Instruction[proc_id][PC[proc_id]];
-        dest   = (uint8_t)Instruction[proc_id][PC[proc_id] + 1];
-        src1   = (uint8_t)Instruction[proc_id][PC[proc_id] + 2];
-        src2   = (uint8_t)Instruction[proc_id][PC[proc_id] + 3];
-        PC[proc_id] += 4;
+        fetch(proc_id);
+        decode();
         execute(proc_id);
     }
     usleep(10);   // 10 microseconds

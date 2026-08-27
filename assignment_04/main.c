@@ -1,6 +1,6 @@
 #include "os.h"
 
-int main(void) {
-    os_run();
+int main(int argc, char** argv) {
+    os_run(argc, argv);
     return 0;
 }

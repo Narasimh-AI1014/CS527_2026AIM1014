@@ -13,5 +13,11 @@ processor.o: processor.c processor.h
 memory.o: memory.c memory.h
 os.o: os.c os.h compiler.h processor.h memory.h
 
+run: all
+	@mkdir -p logs data
+	./sim
+
 clean:
-	rm -f *.o sim program.byte proc_*.log data_out_*.byte
+	rm -f *.o sim program.byte logs/*.log data/data_out_*.byte
+
+.PHONY: all clean run
