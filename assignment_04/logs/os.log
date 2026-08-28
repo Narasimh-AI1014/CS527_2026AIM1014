@@ -1,0 +1,4 @@
+[2026-08-28 02:28:40] Simulator started
+[2026-08-28 02:28:54] PID 1 created, program program_02, assigned to processor 0 (state: Running)
+[2026-08-28 02:29:00] PID 2 created, program program_02, assigned to processor 1 (state: Running)
+[2026-08-28 02:29:22] Simulator exiting
