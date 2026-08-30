@@ -31,7 +31,8 @@ static void strip_comment(char *s) {
 }
 
 static void tokenize(char *line, char tokens[][32], int *n) {
-    char temp[256];
+    // Increased buffer to 512 to handle maximum possible expansion
+    char temp[512];
     int j = 0;
     for (int i = 0; line[i]; i++) {
         if (line[i] == '[') {
@@ -344,20 +345,10 @@ void compile(const char *source_filename, const char *prog_filename) {
             parse_reg(dst, &d_vec, &d_num);
             parse_reg(op1, &o1_vec, &o1_num);
 
-            if (!d_vec && is_number(op2)) {
-                int val = check_constant_range(op2);
-                opcode = 0x0F;
-                dest = d_num;
-                src1 = 0;
-                src2 = val;
-            }
-            else if (!d_vec && !is_number(op2) && parse_reg(op2, &o2_vec, &o2_num) && !o2_vec) {
-                opcode = 0x07;
-                dest = d_num;
-                src1 = 0;
-                src2 = o2_num;
-            }
-            else if (strcmp(op, "+") == 0) {
+            // Removed the early data-movement checks that caused miscompilation.
+            // Now only the actual operator is considered.
+
+            if (strcmp(op, "+") == 0) {
                 if (d_vec) {
                     if (is_number(op2)) {
                         int val = check_constant_range(op2);

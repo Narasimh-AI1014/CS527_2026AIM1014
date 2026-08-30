@@ -1,8 +1,4 @@
-% Vector addition examples
-v0 = [0]          % load vector from data memory at address 0 (8 elements)
-v1 = [32]         % load vector from address 32
-v2 = v0 + v1      % vector add (register-vector)
-v3 = v0 + 5       % vector add with scalar constant
-v4 = v0 * v1      % vector multiply
-v5 = v0 * x1      % vector multiply with scalar register
-[64] = v2         % store result vector to address 64
+x1 = 5
+x2 = 10
+x3 = x1 + x2
+print x3

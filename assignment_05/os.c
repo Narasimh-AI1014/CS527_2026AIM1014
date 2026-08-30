@@ -202,15 +202,25 @@ static void load_process_memory(int proc_id, const char *prog_file, const char *
 }
 
 static void unload_process_memory(int proc_id, const char *data_out_file) {
-    // Write data memory to file
+    // Write data memory to file, handling unallocated pages gracefully
     FILE *out = fopen(data_out_file, "w");
     if (!out) {
         perror("fopen data output");
         exit(EXIT_FAILURE);
     }
+
     for (int logical_addr = 0; logical_addr < 4096; logical_addr++) {
-        int phys = getPhysicallAddress(proc_id, 0, logical_addr);
-        unsigned char byte = (unsigned char)read_byte(phys);
+        int page_idx = logical_addr / PAGESIZE + 1024/PAGESIZE; // data page index
+        unsigned char byte;
+
+        if (pageTable[proc_id][page_idx] == -1) {
+            // Page not allocated, output zero
+            byte = 0x00;
+        } else {
+            int phys = getPhysicallAddress(proc_id, 0, logical_addr);
+            byte = (unsigned char)read_byte(phys);
+        }
+
         fprintf(out, "%02X", byte);
         if ((logical_addr + 1) % 4 == 0)
             fprintf(out, "\n");
@@ -415,12 +425,13 @@ static void shell(void) {
     tv.tv_usec = 0;
 
     if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &tv) > 0) {
-        char ch;
-        while (read(STDIN_FILENO, &ch, 1) > 0 && ch != '\n') {
+        char ch = '\0';
+        ssize_t nread;
+        while ((nread = read(STDIN_FILENO, &ch, 1)) > 0 && ch != '\n') {
             if (len < (int)sizeof(input) - 1)
                 input[len++] = ch;
         }
-        if (ch == '\n') {
+        if (nread > 0 && ch == '\n') {
             input[len] = '\0';
             len = 0;
             prompt_shown = 0;
@@ -455,6 +466,9 @@ static void shell(void) {
                     loader(input, NULL);
                 }
             }
+        } else if (nread == 0) {
+            // EOF encountered
+            shell_exit = 1;
         }
     }
 }

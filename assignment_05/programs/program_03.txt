@@ -1,0 +1,6 @@
+x1 = 100
+Write x1 0        // store x1 at data address 0
+x2 = 0
+Read x2 0         // load x2 from data address 0
+x3 = x2 + 10
+print x3

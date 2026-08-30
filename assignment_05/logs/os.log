@@ -1,2 +1,10 @@
 [2026-08-28 10:28:36] Simulator started
 [2026-08-28 10:28:36] PID 1 created, program program_01, assigned to processor 0 (state: Running)
+[2026-08-30 16:57:54] Simulator started
+[2026-08-30 16:58:29] Simulator started
+[2026-08-30 16:58:35] PID 1 created, program program_01, assigned to processor 0 (state: Running)
+[2026-08-30 17:52:35] Simulator started
+[2026-08-30 17:52:42] PID 1 created, program program_01, assigned to processor 0 (state: Running)
+[2026-08-30 17:52:42] PID 1 finished, data written to data/program_01_out.byte
+[2026-08-30 17:52:55] PID 2 created, program program_02, assigned to processor 0 (state: Running)
+[2026-08-30 17:52:55] PID 2 finished, data written to data/program_02_out.byte
