@@ -13,6 +13,8 @@ extern int32_t IntReg[NP][NUM_INT_REG];
 extern int32_t VecReg[NP][NUM_VEC_REG][VEC_LEN];
 extern int PC[NP], Flags[NP][4], EndSim[NP];
 extern int current_pid;
+extern char current_prog_name[256];
+
 
 // OS-provided translation function
 int getPhysicallAddress(int proc_id, int isFetch, int address);

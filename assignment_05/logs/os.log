@@ -8,3 +8,29 @@
 [2026-08-30 17:52:42] PID 1 finished, data written to data/program_01_out.byte
 [2026-08-30 17:52:55] PID 2 created, program program_02, assigned to processor 0 (state: Running)
 [2026-08-30 17:52:55] PID 2 finished, data written to data/program_02_out.byte
+[2026-08-31 17:06:38] Simulator started
+[2026-08-31 17:08:30] Simulator started
+[2026-08-31 17:09:55] Simulator started
+[2026-08-31 17:09:55] PID 1 created, program sum, assigned to processor 0 (state: Running)
+[2026-08-31 17:09:55] PID 1 finished, data written to data/sum_out.byte
+[2026-08-31 17:10:16] PID 2 created, program vector, assigned to processor 0 (state: Running)
+[2026-08-31 17:10:16] PID 2 finished, data written to data/vector_out.byte
+[2026-08-31 17:12:54] Simulator started
+[2026-08-31 17:12:54] PID 1 created, program program_01, assigned to processor 0 (state: Running)
+[2026-08-31 17:12:54] PID 1 finished, data written to data/program_01_out.byte
+[2026-08-31 17:13:01] PID 2 created, program program_02, assigned to processor 0 (state: Running)
+[2026-08-31 17:13:01] PID 2 finished, data written to data/program_02_out.byte
+[2026-08-31 17:15:08] Simulator exiting
+[2026-08-31 17:15:25] Simulator started
+[2026-08-31 17:15:36] Simulator started
+[2026-08-31 17:15:36] PID 1 created, program program_01, assigned to processor 0 (state: Running)
+[2026-08-31 17:15:46] PID 2 created, program program_02, assigned to processor 1 (state: Running)
+[2026-08-31 17:15:53] PID 1 finished, data written to data/program_01_out.byte
+[2026-08-31 17:15:58] PID 2 finished, data written to data/program_02_out.byte
+[2026-08-31 17:19:18] PID 3 created, program program_01, assigned to processor 0 (state: Running)
+[2026-08-31 17:26:16] Simulator started
+[2026-08-31 17:27:11] Simulator started
+[2026-08-31 17:27:11] PID 1 created, program program_02, assigned to processor 0 (state: Running)
+[2026-08-31 17:27:36] Simulator started
+[2026-08-31 17:27:36] PID 1 created, program program_02, assigned to processor 0 (state: Running)
+[2026-08-31 17:27:46] PID 2 created, program program_01, assigned to processor 1 (state: Running)

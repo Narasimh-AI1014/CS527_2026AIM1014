@@ -7,11 +7,11 @@
 #define MAX_TOKENS 16
 #define MAX_LABELS 256
 
+/* ---------- Utility functions ---------- */
+
 static char *trim(char *s) {
     char *start = s;
-    while (isspace((unsigned char)*start)) {
-        start++;
-    }
+    while (isspace((unsigned char)*start)) start++;
     if (*start == '\0') {
         *s = '\0';
         return s;
@@ -57,8 +57,15 @@ static void tokenize(char *line, char tokens[][32], int *n) {
     }
 }
 
+/* ---------- Register and number parsing ---------- */
+
 static int parse_reg(const char *s, int *is_vec, int *num) {
     if (s[0] == 'x' || s[0] == 'X') {
+        // Integer register: must be x followed by digits only
+        if (s[1] == '\0') return 0;
+        for (const char *p = s + 1; *p; p++) {
+            if (!isdigit((unsigned char)*p)) return 0;
+        }
         *is_vec = 0;
         *num = atoi(s + 1);
         if (*num < 0 || *num >= NUM_INT_REG) {
@@ -68,6 +75,11 @@ static int parse_reg(const char *s, int *is_vec, int *num) {
         return 1;
     }
     if (s[0] == 'v' || s[0] == 'V') {
+        // Vector register: must be v followed by digits only
+        if (s[1] == '\0') return 0;
+        for (const char *p = s + 1; *p; p++) {
+            if (!isdigit((unsigned char)*p)) return 0;
+        }
         *is_vec = 1;
         *num = atoi(s + 1);
         if (*num < 0 || *num >= NUM_VEC_REG) {
@@ -95,6 +107,8 @@ static int check_constant_range(const char *s) {
     return val;
 }
 
+/* ---------- Branch condition codes ---------- */
+
 static int branch_code(const char *s) {
     if (strcmp(s, "EQ") == 0) return 0x0;
     if (strcmp(s, "NE") == 0) return 0x1;
@@ -113,6 +127,8 @@ static int branch_code(const char *s) {
     if (strcmp(s, "AL") == 0) return 0xE;
     return -1;
 }
+
+/* ---------- Main compilation function ---------- */
 
 void compile(const char *source_filename, const char *prog_filename) {
     FILE *src = fopen(source_filename, "r");
@@ -163,10 +179,14 @@ void compile(const char *source_filename, const char *prog_filename) {
         int opcode = 0, dest = 0, src1 = 0, src2 = 0;
         int is_branch = 0;
 
-        // Branch
+        // Branch instructions: B<cond> <label>
         if (tokens[0][0] == 'B' && tokens[0][1] != '\0') {
             int code = branch_code(tokens[0] + 1);
-            if (code >= 0 && nt >= 2) {
+            if (code >= 0) {
+                if (nt != 2) {
+                    fprintf(stderr, "Branch instruction requires exactly one label operand: %s\n", line);
+                    exit(EXIT_FAILURE);
+                }
                 opcode = 0x10 + code;
                 dest = 0;
                 src1 = 0;
@@ -195,63 +215,69 @@ void compile(const char *source_filename, const char *prog_filename) {
         // Legacy Read: Read <variable> <constant address>
         else if (strcmp(tokens[0], "Read") == 0) {
             if (nt != 3) {
-                fprintf(stderr, "Read requires variable and constant address\n");
+                fprintf(stderr, "Read requires variable and constant address: %s\n", line);
                 exit(EXIT_FAILURE);
             }
             int is_vec, num;
-            if (parse_reg(tokens[1], &is_vec, &num) && !is_vec) {
-                int addr = check_constant_range(tokens[2]);
-                opcode = 0x0D;  // integer memory read const
-                dest = num;
-                src1 = 0;
-                src2 = addr;
-            } else {
+            if (!parse_reg(tokens[1], &is_vec, &num) || is_vec) {
                 fprintf(stderr, "Read requires integer register destination\n");
                 exit(EXIT_FAILURE);
             }
+            int addr = check_constant_range(tokens[2]);
+            opcode = 0x0D;  // integer memory read const
+            dest = num;
+            src1 = 0;
+            src2 = addr;
         }
         // Legacy Write: Write <variable> <constant address>
         else if (strcmp(tokens[0], "Write") == 0) {
             if (nt != 3) {
-                fprintf(stderr, "Write requires variable and constant address\n");
+                fprintf(stderr, "Write requires variable and constant address: %s\n", line);
                 exit(EXIT_FAILURE);
             }
             int is_vec, num;
-            if (parse_reg(tokens[1], &is_vec, &num) && !is_vec) {
-                int addr = check_constant_range(tokens[2]);
-                opcode = 0x0E;  // integer memory write const
-                dest = num;
-                src1 = 0;
-                src2 = addr;
-            } else {
+            if (!parse_reg(tokens[1], &is_vec, &num) || is_vec) {
                 fprintf(stderr, "Write requires integer register source\n");
                 exit(EXIT_FAILURE);
             }
+            int addr = check_constant_range(tokens[2]);
+            opcode = 0x0E;  // integer memory write const
+            dest = num;
+            src1 = 0;
+            src2 = addr;
         }
-        // Print
+        // Print: print <integer register>
         else if (strcmp(tokens[0], "print") == 0) {
+            if (nt != 2) {
+                fprintf(stderr, "Print requires exactly one integer register: %s\n", line);
+                exit(EXIT_FAILURE);
+            }
             int is_vec, num;
-            if (parse_reg(tokens[1], &is_vec, &num) && !is_vec) {
-                opcode = 0x08;
-                dest = 0;
-                src1 = 0;
-                src2 = num;
-            } else {
+            if (!parse_reg(tokens[1], &is_vec, &num) || is_vec) {
                 fprintf(stderr, "Print requires integer register\n");
                 exit(EXIT_FAILURE);
             }
+            opcode = 0x08;
+            dest = 0;
+            src1 = 0;
+            src2 = num;
         }
         // Memory write: [addr] = src
-        else if (nt >= 5 && strcmp(tokens[0], "[") == 0 &&
-                 strcmp(tokens[2], "]") == 0 && strcmp(tokens[3], "=") == 0) {
+        else if (strcmp(tokens[0], "[") == 0) {
+            if (nt != 5 || strcmp(tokens[2], "]") != 0 || strcmp(tokens[3], "=") != 0) {
+                fprintf(stderr, "Memory write syntax should be: [address] = source: %s\n", line);
+                exit(EXIT_FAILURE);
+            }
             char *addr = tokens[1];
             char *src = tokens[4];
             int a_vec, a_num, s_vec, s_num;
-            parse_reg(addr, &a_vec, &a_num);
-            parse_reg(src, &s_vec, &s_num);
 
             if (is_number(addr)) {
                 int addr_val = check_constant_range(addr);
+                if (!parse_reg(src, &s_vec, &s_num)) {
+                    fprintf(stderr, "Source must be a register: %s\n", line);
+                    exit(EXIT_FAILURE);
+                }
                 if (s_vec) {
                     opcode = 0x2E;      // vector memory write const
                     dest = s_num;
@@ -264,7 +290,14 @@ void compile(const char *source_filename, const char *prog_filename) {
                     src2 = addr_val;
                 }
             } else {
-                // variable address
+                if (!parse_reg(addr, &a_vec, &a_num) || a_vec) {
+                    fprintf(stderr, "Address must be an integer register or constant: %s\n", line);
+                    exit(EXIT_FAILURE);
+                }
+                if (!parse_reg(src, &s_vec, &s_num)) {
+                    fprintf(stderr, "Source must be a register: %s\n", line);
+                    exit(EXIT_FAILURE);
+                }
                 if (s_vec) {
                     opcode = 0x26;      // vector memory write variable
                     dest = a_num;
@@ -279,13 +312,19 @@ void compile(const char *source_filename, const char *prog_filename) {
             }
         }
         // Memory read: dest = [addr]
-        else if (nt >= 5 && strcmp(tokens[1], "=") == 0 &&
-                 strcmp(tokens[2], "[") == 0 && strcmp(tokens[4], "]") == 0) {
+        else if (strcmp(tokens[1], "=") == 0 && strcmp(tokens[2], "[") == 0) {
+            if (nt != 5 || strcmp(tokens[4], "]") != 0) {
+                fprintf(stderr, "Memory read syntax should be: destination = [address]: %s\n", line);
+                exit(EXIT_FAILURE);
+            }
             char *dst = tokens[0];
             char *addr = tokens[3];
             int d_vec, d_num, a_vec, a_num;
-            parse_reg(dst, &d_vec, &d_num);
-            parse_reg(addr, &a_vec, &a_num);
+
+            if (!parse_reg(dst, &d_vec, &d_num)) {
+                fprintf(stderr, "Destination must be a register: %s\n", line);
+                exit(EXIT_FAILURE);
+            }
 
             if (is_number(addr)) {
                 int addr_val = check_constant_range(addr);
@@ -301,6 +340,10 @@ void compile(const char *source_filename, const char *prog_filename) {
                     src2 = addr_val;
                 }
             } else {
+                if (!parse_reg(addr, &a_vec, &a_num) || a_vec) {
+                    fprintf(stderr, "Address must be an integer register or constant: %s\n", line);
+                    exit(EXIT_FAILURE);
+                }
                 if (d_vec) {
                     opcode = 0x25;      // vector memory read variable
                     dest = d_num;
@@ -315,39 +358,54 @@ void compile(const char *source_filename, const char *prog_filename) {
             }
         }
         // Simple assignment: dest = constant or dest = register (3 tokens)
-        else if (nt == 3 && strcmp(tokens[1], "=") == 0) {
+        else if (strcmp(tokens[1], "=") == 0 && nt == 3) {
             char *dst = tokens[0];
             char *src = tokens[2];
             int d_vec, d_num, s_vec, s_num;
-            if (parse_reg(dst, &d_vec, &d_num) && !d_vec) {
-                if (is_number(src)) {
-                    int val = check_constant_range(src);
-                    opcode = 0x0F;   // data movement constant
-                    dest = d_num;
-                    src1 = 0;
-                    src2 = val;
-                } else if (parse_reg(src, &s_vec, &s_num) && !s_vec) {
-                    opcode = 0x07;   // data movement register
-                    dest = d_num;
-                    src1 = 0;
-                    src2 = s_num;
-                }
+
+            if (!parse_reg(dst, &d_vec, &d_num) || d_vec) {
+                fprintf(stderr, "Destination must be an integer register: %s\n", line);
+                exit(EXIT_FAILURE);
+            }
+
+            if (is_number(src)) {
+                int val = check_constant_range(src);
+                opcode = 0x0F;   // data movement constant
+                dest = d_num;
+                src1 = 0;
+                src2 = val;
+            } else if (parse_reg(src, &s_vec, &s_num) && !s_vec) {
+                opcode = 0x07;   // data movement register
+                dest = d_num;
+                src1 = 0;
+                src2 = s_num;
+            } else {
+                fprintf(stderr, "Invalid source operand: %s\n", src);
+                exit(EXIT_FAILURE);
             }
         }
-        // Arithmetic or data movement (>=5 tokens)
-        else if (nt >= 5 && strcmp(tokens[1], "=") == 0) {
+        // Arithmetic or data movement (5 tokens: dest = op1 operator op2)
+        else if (strcmp(tokens[1], "=") == 0 && nt >= 5) {
+            if (nt != 5) {
+                fprintf(stderr, "Arithmetic instruction must have exactly 5 tokens: %s\n", line);
+                exit(EXIT_FAILURE);
+            }
             char *dst = tokens[0];
             char *op1 = tokens[2];
             char *op = tokens[3];
             char *op2 = tokens[4];
 
             int d_vec, d_num, o1_vec, o1_num, o2_vec, o2_num;
-            parse_reg(dst, &d_vec, &d_num);
-            parse_reg(op1, &o1_vec, &o1_num);
+            if (!parse_reg(dst, &d_vec, &d_num)) {
+                fprintf(stderr, "Invalid destination register: %s\n", dst);
+                exit(EXIT_FAILURE);
+            }
+            if (!parse_reg(op1, &o1_vec, &o1_num)) {
+                fprintf(stderr, "Invalid first operand register: %s\n", op1);
+                exit(EXIT_FAILURE);
+            }
 
-            // Removed the early data-movement checks that caused miscompilation.
-            // Now only the actual operator is considered.
-
+            // Validate and process based on operator
             if (strcmp(op, "+") == 0) {
                 if (d_vec) {
                     if (is_number(op2)) {
@@ -368,6 +426,9 @@ void compile(const char *source_filename, const char *prog_filename) {
                             src1 = o1_num;
                             src2 = o2_num;
                         }
+                    } else {
+                        fprintf(stderr, "Invalid second operand: %s\n", op2);
+                        exit(EXIT_FAILURE);
                     }
                 } else {
                     if (is_number(op2)) {
@@ -381,6 +442,9 @@ void compile(const char *source_filename, const char *prog_filename) {
                         dest = d_num;
                         src1 = o1_num;
                         src2 = o2_num;
+                    } else {
+                        fprintf(stderr, "Invalid second operand for integer add: %s\n", op2);
+                        exit(EXIT_FAILURE);
                     }
                 }
             }
@@ -404,6 +468,9 @@ void compile(const char *source_filename, const char *prog_filename) {
                             src1 = o1_num;
                             src2 = o2_num;
                         }
+                    } else {
+                        fprintf(stderr, "Invalid second operand: %s\n", op2);
+                        exit(EXIT_FAILURE);
                     }
                 } else {
                     if (is_number(op2)) {
@@ -417,6 +484,9 @@ void compile(const char *source_filename, const char *prog_filename) {
                         dest = d_num;
                         src1 = o1_num;
                         src2 = o2_num;
+                    } else {
+                        fprintf(stderr, "Invalid second operand for integer subtract: %s\n", op2);
+                        exit(EXIT_FAILURE);
                     }
                 }
             }
@@ -440,6 +510,9 @@ void compile(const char *source_filename, const char *prog_filename) {
                             src1 = o1_num;
                             src2 = o2_num;
                         }
+                    } else {
+                        fprintf(stderr, "Invalid second operand: %s\n", op2);
+                        exit(EXIT_FAILURE);
                     }
                 } else {
                     if (is_number(op2)) {
@@ -453,10 +526,18 @@ void compile(const char *source_filename, const char *prog_filename) {
                         dest = d_num;
                         src1 = o1_num;
                         src2 = o2_num;
+                    } else {
+                        fprintf(stderr, "Invalid second operand for integer multiply: %s\n", op2);
+                        exit(EXIT_FAILURE);
                     }
                 }
             }
             else if (strcmp(op, "/") == 0) {
+                // Division supported only for integer registers
+                if (d_vec) {
+                    fprintf(stderr, "Vector division is not supported: %s\n", line);
+                    exit(EXIT_FAILURE);
+                }
                 if (is_number(op2)) {
                     int val = check_constant_range(op2);
                     opcode = 0x0C;
@@ -468,8 +549,19 @@ void compile(const char *source_filename, const char *prog_filename) {
                     dest = d_num;
                     src1 = o1_num;
                     src2 = o2_num;
+                } else {
+                    fprintf(stderr, "Invalid second operand for integer divide: %s\n", op2);
+                    exit(EXIT_FAILURE);
                 }
             }
+            else {
+                fprintf(stderr, "Unsupported operator: %s\n", op);
+                exit(EXIT_FAILURE);
+            }
+        }
+        else {
+            fprintf(stderr, "Unrecognised instruction: %s\n", line);
+            exit(EXIT_FAILURE);
         }
 
         if (opcode == 0 && !is_branch) {

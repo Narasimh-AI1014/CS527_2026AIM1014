@@ -9,6 +9,7 @@
 
 #define DEBUG_FETCH_TRACE 1   // set to 0 to disable
 
+char current_prog_name[256] = "unknown";  // will be set by os.c before execution
 int32_t IntReg[NP][NUM_INT_REG];
 int32_t VecReg[NP][NUM_VEC_REG][VEC_LEN];
 int PC[NP], Flags[NP][4], EndSim[NP];
@@ -69,6 +70,7 @@ void close_log(int proc_id) {
 static int opcode, dest, src1, src2;
 
 void fetch(int proc_id) {
+    sleep(1);
     if (PC[proc_id] + 3 >= 1024) {
         EndSim[proc_id] = 1;
         return;
@@ -80,8 +82,7 @@ void fetch(int proc_id) {
     src2   = (uint8_t)read_byte(phys + 3);
 
 #if DEBUG_FETCH_TRACE
-    printf("[Processor %d] Fetch: PC=%d, instruction: %02X %02X %02X %02X (opcode=%02X, dest=%d, src1=%d, src2=%d)\n",
-           proc_id, PC[proc_id], opcode, dest, src1, src2, opcode, dest, src1, src2);
+    printf("%s: %02X %02X %02X %02X\n", current_prog_name, opcode, dest, src1, src2);
 #endif
 
     PC[proc_id] += 4;

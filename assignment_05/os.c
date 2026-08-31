@@ -16,7 +16,7 @@
 
 #define MAX_TASKS 64
 #define TIME_SLICE 10
-#define DEBUG_SCHEDULER 1   // set to 0 to disable debug prints
+#define DEBUG_SCHEDULER 0   // set to 0 to disable debug prints
 
 typedef struct Process {
     int pid;
@@ -26,7 +26,7 @@ typedef struct Process {
     char data_file[256];
     char base_name[256];
 } Process;
-
+extern char current_prog_name[256];  // defined in processor.c
 static Process tasks[MAX_TASKS];
 static int num_tasks = 0;
 static int next_pid = 1;
@@ -499,11 +499,11 @@ void os_run(int argc, char** argv) {
                 continue;
             int proc = tasks[i].proc_id;
 
-#if DEBUG_SCHEDULER
-            printf("[Scheduler] Running PID %d on processor %d: fetching from %s\n",
-                   tasks[i].pid, proc, tasks[i].prog_file);
-#endif
-
+// #if DEBUG_SCHEDULER
+//             printf("[Scheduler] Running PID %d on processor %d: fetching from %s\n",
+//                    tasks[i].pid, proc, tasks[i].prog_file);
+// #endif
+            strcpy(current_prog_name, tasks[i].base_name);  // Set program name for processor prints
             process_instructions(proc, tasks[i].pid, TIME_SLICE);
 
             if (EndSim[proc]) {

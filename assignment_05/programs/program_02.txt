@@ -1,3 +1,5 @@
-x1 = 7
-x2 = x1 * 2
-print x2
+x0 = 0
+.loop
+x1 = x0 - 100
+BNE loop      % if x0 != 100, continue
+print x0
