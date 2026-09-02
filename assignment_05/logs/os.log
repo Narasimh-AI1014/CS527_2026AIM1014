@@ -34,3 +34,18 @@
 [2026-08-31 17:27:36] Simulator started
 [2026-08-31 17:27:36] PID 1 created, program program_02, assigned to processor 0 (state: Running)
 [2026-08-31 17:27:46] PID 2 created, program program_01, assigned to processor 1 (state: Running)
+[2026-09-02 17:23:30] Simulator started
+[2026-09-02 17:24:06] Simulator started
+[2026-09-02 17:24:49] Simulator started
+[2026-09-02 17:25:42] Simulator started
+[2026-09-02 17:26:39] PID 1 created, program program_01, assigned to processor 0 (state: Running)
+[2026-09-02 17:26:52] Simulator started
+[2026-09-02 17:27:11] PID 1 created, program program_02, assigned to processor 0 (state: Running)
+[2026-09-02 17:27:16] Simulator started
+[2026-09-02 17:27:36] PID 1 created, program program_01, assigned to processor 0 (state: Running)
+[2026-09-02 17:27:57] Simulator started
+[2026-09-02 17:29:13] Simulator started
+[2026-09-02 17:29:31] PID 1 created, program program_02, assigned to processor 0 (state: Running)
+[2026-09-02 17:33:29] Simulator started
+[2026-09-02 17:33:29] PID 1 created, program program_01, assigned to processor 0 (state: Running)
+[2026-09-02 17:33:29] PID 2 created, program program_02, assigned to processor 1 (state: Running)

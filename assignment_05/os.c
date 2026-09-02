@@ -487,12 +487,28 @@ void os_run(int argc, char** argv) {
     }
     log_event("Simulator started");
 
-    if (argc >= 2) {
-        const char *prog = argv[1];
-        const char *data = (argc >= 3) ? argv[2] : NULL;
+    // if (argc >= 2) {
+    //     const char *prog = argv[1];
+    //     const char *data = (argc >= 3) ? argv[2] : NULL;
+    //     loader(prog, data);
+    // }
+
+    int i = 1;
+    while (i < argc) {
+        const char *prog = argv[i];
+        const char *data = (i + 1 < argc) ? argv[i + 1] : NULL;
+
+        // Optional: check if the next argument looks like a data file?
+        // For simplicity, assume pairs are given; if odd number, last one has no data.
         loader(prog, data);
+
+        i += 2;   // move to next program (skip data)
     }
 
+    // If no command‑line programs, maybe show a message?
+    if (argc == 1) {
+        printf("No programs specified. Use the shell to load programs.\n");
+    }
     while (!shell_exit) {
         for (int i = 0; i < num_tasks; i++) {
             if (tasks[i].finished || tasks[i].proc_id == -1)
