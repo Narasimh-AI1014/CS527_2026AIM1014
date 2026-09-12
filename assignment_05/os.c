@@ -19,7 +19,15 @@
 #define MAX_TASKS 64
 #define TIME_SLICE 10
 #define DEBUG_SCHEDULER 0
-
+/*
+                 Process
+                    │
+          ┌─────────┼─────────┐
+          ↓         ↓         ↓
+       Running     Ready    Finished
+          │         │         │
+    proc_id >= 0  proc_id=-1 finished=1
+    finished=0    finished=0 */
 typedef struct Process {
     int pid;
     int proc_id;        /* -1 = waiting/ready */
