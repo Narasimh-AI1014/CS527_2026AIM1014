@@ -3,4 +3,4 @@
 
 void os_run(int argc, char** argv);
 
-#endif
+#endif /* OS_H */
